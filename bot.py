@@ -1,18 +1,32 @@
 import os
 import logging
 import json
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 from google import genai
 
-# --- CONFIGURACIÓN DE CLAVES DESDE VARIABLES DE ENTORNO ---
+# --- Servidor HTTP para Render ---
+class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Bot activo")
+
+def run_web_server():
+    port = int(os.environ.get("PORT", 10000))
+    server = HTTPServer(("0.0.0.0", port), SimpleHTTPRequestHandler)
+    server.serve_forever()
+
+# Iniciar servidor web en segundo plano
+threading.Thread(target=run_web_server, daemon=True).start()
+
+# --- CONFIGURACIÓN DE CLAVES ---
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "8710970867:AAGAyhf4t6-Im_8W8MBQnowDgmxm1_PJ824")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
-# Configurar el cliente oficial de Gemini
 client = genai.Client(api_key=GEMINI_API_KEY)
-
-# Memoria local para las comidas del día
 registro_diario = []
 
 PROMPT_SISTEMA = """
@@ -41,7 +55,6 @@ async def procesar_mensaje(update: Update, context: ContextTypes.DEFAULT_TYPE):
     prompt_completo = f"{PROMPT_SISTEMA}\n\nEl usuario dice: '{texto_usuario}'"
 
     try:
-        # Llamada a la API usando la librería moderna y el modelo flash actual
         response = client.models.generate_content(
             model='gemini-3.6-flash',
             contents=prompt_completo,
