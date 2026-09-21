@@ -1,4 +1,4 @@
-import os
+    import os
 import logging
 import json
 import threading
@@ -55,10 +55,11 @@ async def procesar_mensaje(update: Update, context: ContextTypes.DEFAULT_TYPE):
     prompt_completo = f"{PROMPT_SISTEMA}\n\nEl usuario dice: '{texto_usuario}'"
 
     try:
-        response = client.models.generate_content(
-            model='gemini-3.6-flash',
-            contents=prompt_completo,
-        )
+# Cambia esta parte en tu código:
+response = client.models.generate_content(
+    model='gemini-1.5-flash',  # <--- Cambia gemini-2.5-flash por gemini-1.5-flash
+    contents=prompt,
+)
         respuesta_texto = response.text
 
         if "DATA_JSON:" in respuesta_texto:
