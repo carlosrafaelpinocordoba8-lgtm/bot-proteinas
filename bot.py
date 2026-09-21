@@ -5,7 +5,7 @@ import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
-import google.generativeai as genai
+from google import genai
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
@@ -23,33 +23,12 @@ def run_web_server():
 
 threading.Thread(target=run_web_server, daemon=True).start()
 
-# --- CONFIGURACIÓN DE CLAVES ---
+# --- CONFIGURACIÓN DE CLAVES Y CLIENTE ---
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "8710970867:AAGAyhf4t6-Im_8W8MBQnowDgmxm1_PJ824")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
-genai.configure(api_key=GEMINI_API_KEY)
-
-# Lista de modelos compatibles en orden de preferencia
-MODELOS_CANDIDATOS = [
-    'gemini-1.5-flash-001',
-    'gemini-1.5-flash-002',
-    'gemini-1.5-pro',
-    'gemini-1.5-pro-001',
-    'gemini-pro'
-]
-
-def obtener_respuesta_gemini(prompt: str) -> str:
-    """Intenta generar contenido probando los modelos disponibles."""
-    ultimo_error = None
-    for nombre_modelo in MODELOS_CANDIDATOS:
-        try:
-            model = genai.GenerativeModel(nombre_modelo)
-            response = model.generate_content(prompt)
-            return response.text
-        except Exception as e:
-            logging.warning(f"Fallo con el modelo {nombre_modelo}: {e}")
-            ultimo_error = e
-    raise ultimo_error
+# Inicialización del cliente con la nueva SDK de Google
+client = genai.Client(api_key=GEMINI_API_KEY)
 
 PROMPT_SISTEMA = """
 Eres un asistente de nutrición experto para un usuario en Colombia de 58 kg.
@@ -83,7 +62,11 @@ async def procesar_mensaje(update: Update, context: ContextTypes.DEFAULT_TYPE):
     prompt_completo = f"{PROMPT_SISTEMA}\n\nEl usuario dice: '{texto_usuario}'"
 
     try:
-        respuesta_texto = obtener_respuesta_gemini(prompt_completo)
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt_completo
+        )
+        respuesta_texto = response.text
 
         if "DATA_JSON:" in respuesta_texto:
             partes = respuesta_texto.split("DATA_JSON:")
