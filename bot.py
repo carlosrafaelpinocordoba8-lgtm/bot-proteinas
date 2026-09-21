@@ -28,7 +28,28 @@ TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "8710970867:AAGAyhf4t6-Im_8W8M
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
 genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-1.5-flash-latest')
+
+# Lista de modelos compatibles en orden de preferencia
+MODELOS_CANDIDATOS = [
+    'gemini-1.5-flash-001',
+    'gemini-1.5-flash-002',
+    'gemini-1.5-pro',
+    'gemini-1.5-pro-001',
+    'gemini-pro'
+]
+
+def obtener_respuesta_gemini(prompt: str) -> str:
+    """Intenta generar contenido probando los modelos disponibles."""
+    ultimo_error = None
+    for nombre_modelo in MODELOS_CANDIDATOS:
+        try:
+            model = genai.GenerativeModel(nombre_modelo)
+            response = model.generate_content(prompt)
+            return response.text
+        except Exception as e:
+            logging.warning(f"Fallo con el modelo {nombre_modelo}: {e}")
+            ultimo_error = e
+    raise ultimo_error
 
 PROMPT_SISTEMA = """
 Eres un asistente de nutrición experto para un usuario en Colombia de 58 kg.
@@ -62,8 +83,7 @@ async def procesar_mensaje(update: Update, context: ContextTypes.DEFAULT_TYPE):
     prompt_completo = f"{PROMPT_SISTEMA}\n\nEl usuario dice: '{texto_usuario}'"
 
     try:
-        response = model.generate_content(prompt_completo)
-        respuesta_texto = response.text
+        respuesta_texto = obtener_respuesta_gemini(prompt_completo)
 
         if "DATA_JSON:" in respuesta_texto:
             partes = respuesta_texto.split("DATA_JSON:")
