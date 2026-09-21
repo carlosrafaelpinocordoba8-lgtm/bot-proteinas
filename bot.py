@@ -28,7 +28,7 @@ TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "8710970867:AAGAyhf4t6-Im_8W8M
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
 genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-1.5-flash')
+model = genai.GenerativeModel('gemini-1.5-flash-latest')
 
 PROMPT_SISTEMA = """
 Eres un asistente de nutrición experto para un usuario en Colombia de 58 kg.
