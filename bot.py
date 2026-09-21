@@ -59,7 +59,7 @@ async def procesar_mensaje(update: Update, context: ContextTypes.DEFAULT_TYPE):
 response = client.models.generate_content(
     model='gemini-1.5-flash',  # <--- Cambia gemini-2.5-flash por gemini-1.5-flash
     contents=prompt,
-)
+ )
         respuesta_texto = response.text
 
         if "DATA_JSON:" in respuesta_texto:
