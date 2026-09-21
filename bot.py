@@ -2,12 +2,10 @@ import os
 import logging
 import json
 import threading
-import time
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
-from google import genai
-from google.genai.errors import APIError
+import google.generativeai as genai
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
@@ -29,7 +27,8 @@ threading.Thread(target=run_web_server, daemon=True).start()
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "8710970867:AAGAyhf4t6-Im_8W8MBQnowDgmxm1_PJ824")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
-client = genai.Client(api_key=GEMINI_API_KEY)
+genai.configure(api_key=GEMINI_API_KEY)
+model = genai.GenerativeModel('gemini-1.5-flash')
 
 PROMPT_SISTEMA = """
 Eres un asistente de nutrición experto para un usuario en Colombia de 58 kg.
@@ -40,25 +39,6 @@ Instrucciones:
 2. AL FINAL de tu respuesta, agrega STRICTAMENTE una nueva línea con el formato JSON de esta forma:
 DATA_JSON: {"alimentos": [{"nombre": "Huevo", "proteina": 12, "kcal": 140}]}
 """
-
-def llamar_gemini_con_reintentos(prompt: str, max_retries: int = 3):
-    for intento in range(max_retries):
-        try:
-            response = client.models.generate_content(
-                model='gemini-2.5-flash',
-                contents=prompt,
-            )
-            return response.text
-        except APIError as e:
-            if "503" in str(e) or getattr(e, 'code', None) == 503:
-                if intento < max_retries - 1:
-                    tiempo_espera = 2 ** intento
-                    logging.warning(f"Error 503 en Gemini. Reintentando en {tiempo_espera}s...")
-                    time.sleep(tiempo_espera)
-                    continue
-            raise e
-        except Exception as e:
-            raise e
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if "registro_diario" not in context.user_data:
@@ -82,7 +62,8 @@ async def procesar_mensaje(update: Update, context: ContextTypes.DEFAULT_TYPE):
     prompt_completo = f"{PROMPT_SISTEMA}\n\nEl usuario dice: '{texto_usuario}'"
 
     try:
-        respuesta_texto = llamar_gemini_con_reintentos(prompt_completo)
+        response = model.generate_content(prompt_completo)
+        respuesta_texto = response.text
 
         if "DATA_JSON:" in respuesta_texto:
             partes = respuesta_texto.split("DATA_JSON:")
@@ -100,14 +81,8 @@ async def procesar_mensaje(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             await update.message.reply_text(respuesta_texto)
 
-    except APIError as e:
-        codigo = getattr(e, 'code', 'desconocido')
-        if "503" in str(e) or codigo == 503:
-            await update.message.reply_text("⚠️ El servicio de la IA está con alta demanda. Por favor, intenta de nuevo en unos segundos.")
-        else:
-            await update.message.reply_text(f"❌ Error de API ({codigo}). Verifica el estado de la API o la clave en Render.")
     except Exception as e:
-        await update.message.reply_text(f"❌ Ocurrió un error inesperado: {e}")
+        await update.message.reply_text(f"❌ Ocurrió un error con la IA: {e}")
 
 async def ver_resumen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     registro = context.user_data.get("registro_diario", [])
