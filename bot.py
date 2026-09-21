@@ -45,7 +45,7 @@ def llamar_gemini_con_reintentos(prompt: str, max_retries: int = 3):
     for intento in range(max_retries):
         try:
             response = client.models.generate_content(
-                model='gemini-2.0-flash',  # <--- Cambia 2.5 por 2.0
+                model='gemini-1.5-flash',  # <--- Cambia 2.5 por 2.0
                 contents=prompt,
             )
             return response.text
