@@ -11,7 +11,7 @@ from google.genai.errors import APIError
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-# --- Servidor HTTP para mantener vivo el servicio en Render ---
+# --- Servidor HTTP para Render ---
 class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -41,12 +41,11 @@ Instrucciones:
 DATA_JSON: {"alimentos": [{"nombre": "Huevo", "proteina": 12, "kcal": 140}]}
 """
 
-# Función para reintentar automáticamente si ocurre un error 503
 def llamar_gemini_con_reintentos(prompt: str, max_retries: int = 3):
     for intento in range(max_retries):
         try:
             response = client.models.generate_content(
-                model='gemini-1.5-flash',
+                model='gemini-2.5-flash',
                 contents=prompt,
             )
             return response.text
@@ -102,10 +101,11 @@ async def procesar_mensaje(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(respuesta_texto)
 
     except APIError as e:
-        if "503" in str(e) or getattr(e, 'code', None) == 503:
+        codigo = getattr(e, 'code', 'desconocido')
+        if "503" in str(e) or codigo == 503:
             await update.message.reply_text("⚠️ El servicio de la IA está con alta demanda. Por favor, intenta de nuevo en unos segundos.")
         else:
-            await update.message.reply_text(f"❌ Error de API ({getattr(e, 'code', 'desconocido')}). Inténtalo más tarde.")
+            await update.message.reply_text(f"❌ Error de API ({codigo}). Verifica el estado de la API o la clave en Render.")
     except Exception as e:
         await update.message.reply_text(f"❌ Ocurrió un error inesperado: {e}")
 
