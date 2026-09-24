@@ -63,7 +63,7 @@ async def procesar_mensaje(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-3.6-flash',
             contents=prompt_completo
         )
         respuesta_texto = response.text
